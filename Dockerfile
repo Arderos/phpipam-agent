@@ -7,24 +7,26 @@ ENV PHPIPAM_AGENT_SOURCE https://github.com/phpipam/phpipam-agent
 RUN sed -i /etc/apt/sources.list -e 's/$/ non-free'/ && \
     apt-get update && apt-get -y upgrade && \
     rm /etc/apt/preferences.d/no-debian-php && \
-    apt-get install -y git cron libgmp-dev iputils-ping fping && \
+    apt-get install -y git cron gettext libgmp-dev iputils-ping fping && \
     rm -rf /var/lib/apt/lists/*
 
 # Configure apache and required PHP modules
 RUN docker-php-ext-configure mysqli --with-mysqli=mysqlnd && \
     docker-php-ext-install mysqli && \
+    docker-php-ext-install pdo && \
     docker-php-ext-install json && \
     docker-php-ext-install pdo_mysql && \
     ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h && \
     docker-php-ext-configure gmp --with-gmp=/usr/include/x86_64-linux-gnu && \
     docker-php-ext-install gmp && \
-    docker-php-ext-install pcntl
+    docker-php-ext-install pcntl && \
+    docker-php-ext-install gettext
 
 COPY php.ini /usr/local/etc/php/
 
 # Clone phpipam-agent sources
 WORKDIR /opt/
-RUN git clone ${PHPIPAM_AGENT_SOURCE}.git
+RUN git clone --recursive ${PHPIPAM_AGENT_SOURCE}.git
 
 WORKDIR /opt/phpipam-agent
 # Use system environment variables into config.php
@@ -44,4 +46,3 @@ RUN echo "*/5 * * * * /usr/local/bin/php /opt/phpipam-agent/index.php update > /
     crontab ${CRONTAB_FILE}
 
 CMD [ "sh", "-c", "printenv > /etc/environment && cron -f" ]
-
